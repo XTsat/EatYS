@@ -1,3 +1,5 @@
+const MODE_NORMAL = 1, MODE_ENDLESS = 2, MODE_PRACTICE = 3;
+
 (function(w) {
     let isDesktop = !navigator['userAgent'].match(/(ipad|iphone|ipod|android|windows phone)/i);
     let fontunit = isDesktop ? 20 : ((window.innerWidth > window.innerHeight ? window.innerHeight : window.innerWidth) / 320) * 10;
@@ -16,10 +18,11 @@
             }
         }
     }
+
     let body, blockSize, GameLayer = [],
         GameLayerBG, touchArea = [],
         GameTimeLayer;
-    let transform, transitionDuration, welcomeLayerClosed;
+    let transform, transitionDuration, welcomeLayerClosed, mode;
 
     w.init = function() {
         showWelcomeLayer();
@@ -42,11 +45,12 @@
         gameInit();
         initSetting();
         window.addEventListener('resize', refreshSize, false);
-        let btn = document.getElementById('ready-btn');
-        btn.className = 'btn btn-primary btn-lg';
-        btn.onclick = function () {
-            closeWelcomeLayer();
-        }
+    }
+
+    w.readyBtn = function(mod) {
+        mode = mod;
+        closeWelcomeLayer();
+        updatePanel();
     }
 
     w.winOpen = function() {
@@ -105,6 +109,8 @@
         _gameStart = false,
         _gameTime, _gameTimeNum, _gameScore, _date1, deviation_time;
 
+    let _gameStartTime;
+
     w.gameInit = function() {
         createjs.Sound.registerSound({
             src: "./static/music/err-吃饱喝足去rp嘿嘿.mp3",
@@ -128,16 +134,50 @@
         _gameOver = false;
         _gameStart = false;
         _gameTimeNum = 20;
-        GameTimeLayer.innerHTML = creatTimeText(_gameTimeNum);
+        _gameStartTime = 0;
         countBlockSize();
         refreshGameLayer(GameLayer[0]);
         refreshGameLayer(GameLayer[1], 1);
+        updatePanel();
     }
 
     w.gameStart = function() {
         _date1 = new Date();
         _gameStart = true;
-        _gameTime = setInterval(gameTime, 1000);
+
+        _gameTime = setInterval(timer, 200);
+    }
+
+    function getCPS() {
+        let cps = _gameScore / _gameStartTime;
+        if (isNaN(cps) || cps === Infinity) {
+            cps = 0;
+        }
+        return cps;
+    }
+
+    function timer() {
+        _gameTimeNum -= 0.2;
+        _gameStartTime += 0.2;
+
+        updatePanel();
+    }
+
+    function updatePanel() {
+        if (mode === MODE_NORMAL) {
+            if (_gameTimeNum <= 0) {
+                GameTimeLayer.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;时间到！';
+                gameOver();
+                GameLayerBG.className += ' flash';
+                createjs.Sound.play("end");
+            } else {
+                GameTimeLayer.innerHTML = creatTimeText(_gameTimeNum);
+            }
+        } else if (mode === MODE_ENDLESS) {
+            GameTimeLayer.innerHTML = `CPS:${getCPS().toFixed(2)}`;
+        } else {
+            GameTimeLayer.innerHTML = `SCORE:${_gameScore}`;
+        }
     }
 
     w.gameOver = function() {
@@ -178,20 +218,8 @@
         }
     }
 
-    w.gameTime = function() {
-        _gameTimeNum--;
-        if (_gameTimeNum <= 0) {
-            GameTimeLayer.innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;时间到！';
-            gameOver();
-            GameLayerBG.className += ' flash';
-            createjs.Sound.play("end");
-        } else {
-            GameTimeLayer.innerHTML = creatTimeText(_gameTimeNum);
-        }
-    }
-
     w.creatTimeText = function(n) {
-        return '&nbsp;TIME:' + n;
+        return '&nbsp;TIME:' + Math.ceil(n);
     }
 
     let _ttreg = / t{1,2}(\d+)/,
@@ -269,11 +297,20 @@
             tar.className = tar.className.replace(_ttreg, ' tt$1');
             _gameBBListIndex++;
             _gameScore++;
+
+            updatePanel();
+
             gameLayerMoveNextRow();
         } else if (_gameStart && !tar.notEmpty) {
             createjs.Sound.play("err");
-            gameOver();
-            tar.className += ' bad';
+            tar.classList.add('bad');
+            if (mode === MODE_PRACTICE) {
+                setTimeout(() => {
+                    tar.classList.remove('bad');
+                }, 500);
+            } else {
+                gameOver();
+            }
         }
         return false;
     }
@@ -300,6 +337,7 @@
         welcomeLayerClosed = true;
         let l = document.getElementById('welcome');
         l.style.display = 'none';
+        updatePanel();
     }
 
     w.showWelcomeLayer = function() {
@@ -308,22 +346,31 @@
         l.style.display = 'block';
     }
 
+    function getBestScore(score) {
+        // 练习模式不会进入算分界面
+        let cookieName = (mode === MODE_NORMAL ? 'bast-score' : 'endless-best-score');
+        let best = cookie(cookieName) ? Math.max(parseFloat(cookie(cookieName)), score) : score;
+        cookie(cookieName, best.toFixed(2), 100);
+        return best;
+    }
+
+    function scoreToString(score) {
+        return mode === MODE_ENDLESS ? score.toFixed(2) : score.toString();
+    }
+
     w.showGameScoreLayer = function() {
         let l = document.getElementById('GameScoreLayer');
         let c = document.getElementById(_gameBBList[_gameBBListIndex - 1].id).className.match(_ttreg)[1];
+        let score = (mode === MODE_ENDLESS ? parseFloat(getCPS().toFixed(2)) : _gameScore);
+        let best = getBestScore(score);
+        score = scoreToString(score);
         l.className = l.className.replace(/bgc\d/, 'bgc' + c);
         document.getElementById('GameScoreLayer-text').innerHTML = shareText(_gameScore);
         let score_text = '得分&nbsp;&nbsp;';
-        score_text += deviation_time < 23000 ? _gameScore : "<span style='color:red;'>" + _gameScore + "</span>";
+        let normalCond = deviation_time < 23000 || mode !== MODE_NORMAL;
+        score_text += normalCond ? score : "<span style='color:red;'>" + score + "</span>";
         document.getElementById('GameScoreLayer-score').innerHTML = score_text;
-        let bast = cookie('bast-score');
-        if (deviation_time < 23000) {
-            if (!bast || _gameScore > bast) {
-                bast = _gameScore;
-                cookie('bast-score', bast, 100);
-            }
-        }
-        document.getElementById('GameScoreLayer-bast').innerHTML = '最佳&nbsp;&nbsp;' + bast;
+        document.getElementById('GameScoreLayer-bast').innerHTML = '最佳&nbsp;&nbsp;' + scoreToString(best);
         l.style.display = 'block';
     }
 
@@ -344,16 +391,20 @@
     }
 
     w.shareText = function(score) {
-        let date2 = new Date();
-        deviation_time = (date2.getTime() - _date1.getTime())
-        if (deviation_time > 23000) {
-            return '倒计时多了' + ((deviation_time / 1000) - 20).toFixed(2) + "s";
+        if (mode === MODE_NORMAL) {
+            let date2 = new Date();
+            deviation_time = (date2.getTime() - _date1.getTime())
+            if (deviation_time > 23000) {
+                return '倒计时多了' + ((deviation_time / 1000) - 20).toFixed(2) + "s";
+            }
+            SubmitResults();
         }
-        SubmitResults();
-        if (score <= 49) return '浩杰的蔑视';
-        if (score <= 99) return '吃饱喝足去rp，嘿嘿';
-        if (score <= 149) return '来两部骚一点的色图，发到群里面，我要自己看';
-        if (score <= 199) return '浩杰爱你哟';
+        // TODO 添加反馈
+        if (mode === MODE_ENDLESS) return '';
+        if (score <= 49) return '试着好好练一下？';
+        if (score <= 99) return 'TCL';
+        if (score <= 149) return 'TQL';
+        if (score <= 199) return '您';
         return '人？';
     }
 
@@ -391,7 +442,7 @@
     w.initSetting = function() {
         document.getElementById("username").value = cookie("username") ? cookie("username") : "";
         document.getElementById("message").value = cookie("message") ? cookie("message") : "";
-        document.getElementsByTagName("title")[0].innerText = cookie("title") ? cookie("title") : "吃掉💊";
+        document.getElementsByTagName("title")[0].innerText = cookie("title") ? cookie("title") : "吃掉小鹿乃";
         if (cookie("keyboard")) {
             document.getElementById("keyboard").value = cookie("keyboard");
             map = {}
