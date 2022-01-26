@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://xtsat.github.io/EatYS/"><img src="https://github.com/XTsat/EatYS/blob/main/static/image/ClickBefore-药水.png?raw=true" width="100" height="100" alt="EatKano"></a>
+  <a href="https://xtsat.github.io/EatYS/"><img src="https://github.com/XTsat/EatYS/blob/main/static/image/ClickBefore-药水.png?raw=true" width="100" height="100" alt="EatYS"></a>
 </p>
 <div align="center">
 
