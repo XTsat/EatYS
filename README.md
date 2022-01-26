@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://xtsat.github.io/Eatyaoshui/"><img src="https://github.com/XTsat/Eatyaoshui/blob/main/static/image/ClickBefore-药水.png?raw=true" width="100" height="100" alt="EatKano"></a>
+  <a href="https://xtsat.github.io/EatYS/"><img src="https://github.com/XTsat/EatYS/blob/main/static/image/ClickBefore-药水.png?raw=true" width="100" height="100" alt="EatKano"></a>
 </p>
 <div align="center">
 
@@ -15,7 +15,7 @@ _🦌 网页小游戏 🥛_
 小游戏：吃掉浩杰
 
 
-[Github Page](https://xtsat.github.io/Eatyaoshui/index.html)
+[Github Page](https://xtsat.github.io/EatYS/index.html)
 
 ## 可选功能
 
